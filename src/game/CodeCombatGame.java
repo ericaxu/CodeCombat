@@ -2,7 +2,6 @@ package game;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Insets;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -17,7 +16,6 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.border.LineBorder;
@@ -32,22 +30,19 @@ public class CodeCombatGame extends JFrame
     public static Board gameBoard;
     JMenuBar menubar;
     JLabel statusbar;
+    boolean isExecutingCode;
     
     public CodeCombatGame()
     {
-        codeArea = new RSyntaxTextArea(20, 60);
-        codeArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_JAVA);
-        codeArea.setCodeFoldingEnabled(true);
-        codeArea.setAutoIndentEnabled(true);
-        codeArea.setCloseCurlyBraces(true);
+        isExecutingCode = false;
         
-        RTextScrollPane codePane = new RTextScrollPane(codeArea);
-        codePane.setFoldIndicatorEnabled(true);
-        codePane.createVerticalScrollBar();
-        
-        gameBoard = new Board();
-        
+        // create components
         menubar = new JMenuBar();
+        codeArea = new RSyntaxTextArea(20, 60);
+        gameBoard = new Board();
+        statusbar = new JLabel(" Editor mode");
+        
+        // menu bar
         JMenu file = new JMenu("File");
         JMenuItem run = new JMenuItem("Run");
         JMenuItem quit = new JMenuItem("Quit");
@@ -59,7 +54,6 @@ public class CodeCombatGame extends JFrame
                 runCode();
             }
         });
-        
         quit.addActionListener(new ActionListener()
         {
             @Override
@@ -73,14 +67,16 @@ public class CodeCombatGame extends JFrame
         menubar.add(file);
         setJMenuBar(menubar);
         
-        JToolBar toolbar = new JToolBar();
-        toolbar.setFloatable(false);
+        // coding area
+        codeArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_JAVA);
+        codeArea.setCodeFoldingEnabled(true);
+        codeArea.setAutoIndentEnabled(true);
+        codeArea.setCloseCurlyBraces(true);
+        RTextScrollPane codePane = new RTextScrollPane(codeArea);
+        codePane.setFoldIndicatorEnabled(true);
+        codePane.createVerticalScrollBar();
         
-        JToolBar vertical = new JToolBar(JToolBar.VERTICAL);
-        vertical.setFloatable(false);
-        vertical.setMargin(new Insets(10, 5, 5, 5));
-        
-        statusbar = new JLabel(" Idle");
+        // status bar
         statusbar.setPreferredSize(new Dimension(-1, 22));
         statusbar.setBorder(LineBorder.createGrayLineBorder());
         
@@ -90,7 +86,6 @@ public class CodeCombatGame extends JFrame
         
         // add components to game
         add(gameBoard, BorderLayout.CENTER);
-        add(toolbar, BorderLayout.NORTH);
         add(codePane, BorderLayout.WEST);
         
         add(statusbar, BorderLayout.SOUTH);
@@ -111,10 +106,16 @@ public class CodeCombatGame extends JFrame
         {
             public void mouseClicked(MouseEvent event)
             {
-                if (!gameBoard.isFocusOwner())
-                {
-                    gameBoard.requestFocus();
-                }
+                gameBoard.requestFocus();
+                statusbar.setText(" Game mode");
+            }
+        });
+        codeArea.addMouseListener(new MouseAdapter()
+        {
+            public void mouseClicked(MouseEvent event)
+            {
+                codeArea.requestFocus();
+                statusbar.setText(" Editor mode");
             }
         });
         AbstractAction toggleFocus = new AbstractAction()
@@ -125,9 +126,9 @@ public class CodeCombatGame extends JFrame
                 toggleFocus();
             }
         };
-        KeyStroke fireKeyStroke = KeyStroke.getKeyStroke("control TAB");
-        gameBoard.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(fireKeyStroke, "control TAB");
-        gameBoard.getActionMap().put("control TAB", toggleFocus);
+        KeyStroke toggleFocusKeyStroke = KeyStroke.getKeyStroke("control T");
+        gameBoard.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(toggleFocusKeyStroke, "switch focus");
+        gameBoard.getActionMap().put("switch focus", toggleFocus);
     }
     
     public class CodeRunnable implements Runnable
@@ -135,6 +136,7 @@ public class CodeCombatGame extends JFrame
         public void run()
         {
             statusbar.setText(" Running code...");
+            isExecutingCode = true;
             gameBoard.requestFocusInWindow();
             String code = codeArea.getText();
             String[] commands = code.split("\\s");
@@ -162,26 +164,31 @@ public class CodeCombatGame extends JFrame
                     e.printStackTrace();
                 }
             }
-            statusbar.setText(" Idle");
+            statusbar.setText(" Editor mode");
+            isExecutingCode = false;
         }
     }
     
     private void runCode()
     {
-        
-        Thread codeExecution = new Thread(new CodeRunnable());
-        codeExecution.start();
+        if (!isExecutingCode)
+        {
+            Thread codeExecution = new Thread(new CodeRunnable());
+            codeExecution.start();
+        }
     }
     
     private void toggleFocus()
     {
-        if (gameBoard.isFocusOwner())
+        if (statusbar.getText().equals(" Game mode"))
         {
             codeArea.requestFocusInWindow();
+            statusbar.setText(" Editor mode");
         }
-        else
+        else if (statusbar.getText().equals(" Editor mode"))
         {
             gameBoard.requestFocusInWindow();
+            statusbar.setText(" Game mode");
         }
     }
     
